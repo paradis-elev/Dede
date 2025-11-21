@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Super Joc cu Pisici</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #ffe6ff;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #topbar {
+        display: flex;
+        justify-content: space-around;
+        background: #ffb3ec;
+        padding: 10px;
+        font-size: 20px;
+    }
+
+    #gameover {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: white;
+        font-size: 36px;
+        display: none;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        margin-top: 15px;
+        font-size: 20px;
+        background: #ff66d9;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 10px;
+    }
+
+    .cat {
+        position: absolute;
+        width: 90px;
+        cursor: pointer;
+        transition: transform 0.2s, top 0.5s, left 0.5s;
+        animation: pop 0.4s ease-out;
+    }
+
+    @keyframes pop {
+        from { transform: scale(0); }
+        to { transform: scale(1); }
+    }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <div id="score">Scor: 0</div>
+    <div id="lives">Vieți: 5</div>
+    <div id="time">Timp: 60</div>
+    <div id="level">Nivel: 1</div>
+</div>
+
+<div id="gameover">
+    <div id="finalText"></div>
+    <button class="btn" onclick="restartGame()">Reîncepe jocul</button>
+</div>
+
+<script>
+    let score = 0;
+    let lives = 5;
+    let timeLeft = 60;
+    let level = 1;
+    let speed = 1200;   // cât de des apare o pisică
+
+    const catImages = [
+        "https://placekitten.com/120/120",
+        "https://placekitten.com/121/121",
+        "https://placekitten.com/130/130",
+        "https://placekitten.com/140/140",
+        "https://placekitten.com/150/150"
+    ];
+
+    const meowSound = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
+    const missSound = new Audio("https://www.fesliyanstudios.com/play-mp3/6676");
+
+    function updateUI() {
+        document.getElementById("score").textContent = "Scor: " + score;
+        document.getElementById("lives").textContent = "Vieți: " + lives;
+        document.getElementById("time").textContent = "Timp: " + timeLeft;
+        document.getElementById("level").textContent = "Nivel: " + level;
+    }
+
+    function spawnCat() {
+        if (lives <= 0 || timeLeft <= 0) return;
+
+        const cat = document.createElement("img");
+        cat.src = catImages[Math.floor(Math.random() * catImages.length)];
+        cat.classList.add("cat");
+
+        cat.style.left = Math.random() * (window.innerWidth - 120) + "px";
+        cat.style.top = Math.random() * (window.innerHeight - 180) + "px";
+
+        cat.onclick = function () {
+            score++;
+            meowSound.play();
+            updateUI();
+            cat.remove();
+        };
+
+        document.body.appendChild(cat);
+
+        setTimeout(() => {
+            if (document.body.contains(cat)) {
+                lives--;
+                missSound.play();
+                updateUI();
+                cat.remove();
+                if (lives <= 0) endGame();
+            }
+        }, 1100);
+    }
+
+    function levelUp() {
+        if (score > level * 10) {
+            level++;
+            speed -= 150; 
+            if (speed < 400) speed = 400;
+            updateUI();
+            clearInterval(catSpawner);
+            catSpawner = setInterval(spawnCat, speed);
+        }
+    }
+
+    function endGame() {
+        clearInterval(catSpawner);
+        clearInterval(timer);
+        document.getElementById("gameover").style.display = "flex";
+        document.getElementById("finalText").textContent =
+            "Joc terminat! Scor final: " + score;
+    }
+
+    function restartGame() {
+        document.getElementById("gameover").style.display = "none";
+        score = 0;
+        lives = 5;
+        timeLeft = 60;
+        level = 1;
+        speed = 1200;
+        updateUI();
+
+        catSpawner = setInterval(spawnCat, speed);
+        timer = setInterval(() => {
+            timeLeft--;
+            updateUI();
+            if (timeLeft <= 0) endGame();
+            levelUp();
+        }, 1000);
+    }
+
+    let catSpawner = setInterval(spawnCat, speed);
+
+    let timer = setInterval(() => {
+        timeLeft--;
+        updateUI();
+        if (timeLeft <= 0) endGame();
+        levelUp();
+    }, 1000);
+
+</script>
+
+</body>
+</html>
