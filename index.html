@@ -15,8 +15,9 @@
         display: flex;
         justify-content: space-around;
         background: #ffb3ec;
-        padding: 10px;
-        font-size: 20px;
+        padding: 12px;
+        font-size: 22px;
+        font-weight: bold;
     }
 
     #gameover {
@@ -29,27 +30,30 @@
         align-items: center;
         flex-direction: column;
         color: white;
-        font-size: 36px;
+        font-size: 40px;
         display: none;
     }
 
     .btn {
-        padding: 10px 20px;
-        margin-top: 15px;
-        font-size: 20px;
+        padding: 12px 20px;
+        margin-top: 20px;
+        font-size: 22px;
         background: #ff66d9;
         border: none;
         color: white;
         cursor: pointer;
-        border-radius: 10px;
+        border-radius: 12px;
     }
 
-    .cat {
+    .cat, .powerup {
         position: absolute;
-        width: 90px;
+        width: 100px;
         cursor: pointer;
-        transition: transform 0.2s, top 0.5s, left 0.5s;
-        animation: pop 0.4s ease-out;
+        animation: pop 0.25s ease-out;
+    }
+
+    .powerup {
+        width: 80px;
     }
 
     @keyframes pop {
@@ -62,8 +66,8 @@
 
 <div id="topbar">
     <div id="score">Scor: 0</div>
-    <div id="lives">Vieți: 5</div>
-    <div id="time">Timp: 60</div>
+    <div id="lives">Vieți: 10</div>
+    <div id="time">Timp: 90</div>
     <div id="level">Nivel: 1</div>
 </div>
 
@@ -74,19 +78,31 @@
 
 <script>
     let score = 0;
-    let lives = 5;
-    let timeLeft = 60;
+    let lives = 10;
+    let timeLeft = 90;
     let level = 1;
-    let speed = 1200;   // cât de des apare o pisică
+    let spawnSpeed = 1400;
+    let difficultyTimer = null;
+    let spawnTimer = null;
 
+    /* 🔥 Pisicile tale — NOTE: acestea sunt numele fișierelor primite */
     const catImages = [
-        "/png-clipart-gray-cat-illustration-british-shorthair-dog-cartoon-cuteness-cute-cat-mammal-animals-thumbnail.png
-"
-        // "https://placekitten.com/121/121",
-        // "https://placekitten.com/130/130",
-        // "https://placekitten.com/140/140",
-        // "https://placekitten.com/150/150"
+        "8cd254078ad61fcc0d9183277152fca9.jpg",
+        "black-cute-cat-illustration-hd-transparent-background-735811696674286xi4jjpfgdf.png",
+        "cute-cat-logo-design-abstract-drawing-cat-in-a-minimalist-style-cartoon-cat-logo-vector-illustration-2PJYBG3.jpg",
+        "da8ec2d6-5f3b-4cb4-9c99-5b0a509f7b9e.avif",
+        "flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+        "images.png",
+        "png-clipart-gray-cat-illustration-british-shorthair-dog-cartoon-cuteness-cute-cat-mammal-animals-thumbnail.png",
+        "pngtree-cute-cartoon-cat-illustration-png-image_11576669.png"
     ];
+
+    /* ⭐ POWERUP-URI (folosește imagini din joc sau pune tu altele) */
+    const powerUpImages = {
+        life: "images.png",        // +1 viață
+        slow: "flat,750x,075,f-pad,750x1000,f8f8f8.jpg", // încetinire timp
+        supercat: "da8ec2d6-5f3b-4cb4-9c99-5b0a509f7b9e.avif" // +5 puncte
+    };
 
     const meowSound = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
     const missSound = new Audio("https://www.fesliyanstudios.com/play-mp3/6676");
@@ -98,6 +114,14 @@
         document.getElementById("level").textContent = "Nivel: " + level;
     }
 
+    function randomPosition() {
+        return {
+            left: Math.random() * (window.innerWidth - 120) + "px",
+            top: Math.random() * (window.innerHeight - 180) + "px"
+        };
+    }
+
+    /* 🐱 Spawn pisică */
     function spawnCat() {
         if (lives <= 0 || timeLeft <= 0) return;
 
@@ -105,8 +129,9 @@
         cat.src = catImages[Math.floor(Math.random() * catImages.length)];
         cat.classList.add("cat");
 
-        cat.style.left = Math.random() * (window.innerWidth - 120) + "px";
-        cat.style.top = Math.random() * (window.innerHeight - 180) + "px";
+        let pos = randomPosition();
+        cat.style.left = pos.left;
+        cat.style.top = pos.top;
 
         cat.onclick = function () {
             score++;
@@ -125,54 +150,92 @@
                 cat.remove();
                 if (lives <= 0) endGame();
             }
-        }, 1100);
+        }, spawnSpeed - 200);
     }
 
-    function levelUp() {
-        if (score > level * 10) {
-            level++;
-            speed -= 150; 
-            if (speed < 400) speed = 400;
+    /* ⭐ Spawn POWER-UP aleator */
+    function spawnPowerUp() {
+        if (Math.random() > 0.25) return; // 25% șansă
+
+        const type = ["life", "slow", "supercat"][Math.floor(Math.random() * 3)];
+        const power = document.createElement("img");
+        power.src = powerUpImages[type];
+        power.classList.add("powerup");
+
+        let pos = randomPosition();
+        power.style.left = pos.left;
+        power.style.top = pos.top;
+
+        power.onclick = function () {
+            if (type === "life") {
+                lives++;
+            } else if (type === "slow") {
+                spawnSpeed += 300;
+                clearInterval(spawnTimer);
+                spawnTimer = setInterval(gameLoop, spawnSpeed);
+            } else if (type === "supercat") {
+                score += 5;
+            }
+
             updateUI();
-            clearInterval(catSpawner);
-            catSpawner = setInterval(spawnCat, speed);
-        }
+            power.remove();
+        };
+
+        document.body.appendChild(power);
+
+        setTimeout(() => {
+            if (document.body.contains(power)) power.remove();
+        }, 2500);
     }
 
+    /* 🔁 Ce se întâmplă la fiecare ciclu */
+    function gameLoop() {
+        spawnCat();
+        if (Math.random() < 0.3) spawnPowerUp(); // putere de spawn
+    }
+
+    /* 🔥 Level up */
+    function handleDifficulty() {
+        timeLeft--;
+        if (timeLeft <= 0) endGame();
+
+        if (score >= level * 15) {
+            level++;
+            spawnSpeed -= 120;
+            if (spawnSpeed < 600) spawnSpeed = 600;
+            clearInterval(spawnTimer);
+            spawnTimer = setInterval(gameLoop, spawnSpeed);
+        }
+
+        updateUI();
+    }
+
+    /* ❌ GAME OVER */
     function endGame() {
-        clearInterval(catSpawner);
-        clearInterval(timer);
+        clearInterval(spawnTimer);
+        clearInterval(difficultyTimer);
         document.getElementById("gameover").style.display = "flex";
         document.getElementById("finalText").textContent =
             "Joc terminat! Scor final: " + score;
     }
 
+    /* 🔄 Restart */
     function restartGame() {
-        document.getElementById("gameover").style.display = "none";
         score = 0;
-        lives = 5;
-        timeLeft = 60;
+        lives = 10;
+        timeLeft = 90;
         level = 1;
-        speed = 1200;
+        spawnSpeed = 1400;
+
+        document.getElementById("gameover").style.display = "none";
         updateUI();
 
-        catSpawner = setInterval(spawnCat, speed);
-        timer = setInterval(() => {
-            timeLeft--;
-            updateUI();
-            if (timeLeft <= 0) endGame();
-            levelUp();
-        }, 1000);
+        spawnTimer = setInterval(gameLoop, spawnSpeed);
+        difficultyTimer = setInterval(handleDifficulty, 1000);
     }
 
-    let catSpawner = setInterval(spawnCat, speed);
-
-    let timer = setInterval(() => {
-        timeLeft--;
-        updateUI();
-        if (timeLeft <= 0) endGame();
-        levelUp();
-    }, 1000);
+    // Pornește jocul
+    restartGame();
 
 </script>
 
